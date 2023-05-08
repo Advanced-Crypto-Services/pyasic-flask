@@ -17,11 +17,11 @@ from pyasic.network import MinerNetwork
 
 
 # define asynchronous function to scan for miners
-async def scan_and_get_data(ips):
+async def scan_and_get_data(ip, mask):
     # Define network range to be used for scanning
     # This can take a list of IPs, a constructor string, or an IP and subnet mask
     # The standard mask is /24 (x.x.x.0-255), and you can pass any IP address in the subnet
-    net = MinerNetwork(ips)
+    net = MinerNetwork(ip, mask=mask)
     # Scan the network for miners
     # This function returns a list of miners of the correct type as a class
     miners: list = await net.scan_network_for_miners()
@@ -30,7 +30,9 @@ async def scan_and_get_data(ips):
     # To do them all we have to create a list of tasks and gather them
     tasks = [miner.get_data() for miner in miners]
     # Gather all tasks asynchronously and run them
-    return await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks)
+
+    return results
 
 app = Flask(__name__)
 
@@ -41,14 +43,14 @@ async def miner():
 
 @app.route('/scan', methods=['GET'])
 async def scan():
-	miners = await scan_and_get_data(request.args.get("ips").split(","))
-	
-	result = "["
+    miners = await scan_and_get_data(request.args.get("ip"), request.args.get("mask", default=24, type=int))
 
-	for miner in miners:
-		result += f'{miner.as_json()},'
+    result = "["
 
-		return f'{result.strip(",")} ]' 
+    for miner in miners:
+        result += f'{miner.as_json()},'
+
+    return f'{result.strip(",")} ]' 
 
 @app.route('/info')
 def info():
