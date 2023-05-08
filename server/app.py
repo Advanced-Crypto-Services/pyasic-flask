@@ -1,7 +1,7 @@
 import asyncio
 from pyasic import get_miner
 from flask import Flask, request, jsonify
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 
 # define asynchronous function to get miner and data
 async def get_miner_data(miner_ip: str):
@@ -35,9 +35,9 @@ async def scan_and_get_data(ip, mask):
 
 app = Flask(__name__)
 CORS(app)
+cors = CORS(app, resources={r"/miner": {"origins": "*"}, r"/scan": {"origins": "*"}})
 
 @app.route('/miner', methods=['GET'])
-@cross_origin()
 async def miner():
     data = await get_miner_data(request.args.get("ip"))
     response = app.response_class(
@@ -49,7 +49,6 @@ async def miner():
 
 
 @app.route('/scan', methods=['GET'])
-@cross_origin()
 async def scan():
     miners = await scan_and_get_data(request.args.get("ip"), request.args.get("mask", default=24, type=int))
 
