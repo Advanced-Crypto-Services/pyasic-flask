@@ -38,8 +38,14 @@ app = Flask(__name__)
 
 @app.route('/miner', methods=['GET'])
 async def miner():
-	data = await get_miner_data(request.args.get("ip"))
-	return data.as_json()
+    data = await get_miner_data(request.args.get("ip"))
+    response = app.response_class(
+        response=data.as_json(),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
 
 @app.route('/scan', methods=['GET'])
 async def scan():
@@ -50,7 +56,12 @@ async def scan():
     for miner in miners:
         result += f'{miner.as_json()},'
 
-    return f'{result.strip(",")} ]' 
+    response = app.response_class(
+        response=f'{result.strip(",")} ]',
+        status=200,
+        mimetype='application/json'
+    )
+    return response
 
 @app.route('/info')
 def info():
