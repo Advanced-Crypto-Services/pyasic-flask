@@ -112,7 +112,7 @@ async def scan():
          results[miner['ip']] = { 'miner_data': miner, 'kernel_log': f'{request.host_url}kernel-logs?ip={miner["ip"]}' }
 
     for potential_miner in potential_miners:
-         results[potential_miner] = { 'kernel_log': f'{request.host_url}kernel-logs?ip={potential_miner["ip"]}' }
+         results[potential_miner] = { 'kernel_log': f'{request.host_url}kernel-logs?ip={potential_miner}' }
 
     response = app.response_class(
         response=json.dumps(results),
