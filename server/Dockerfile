@@ -4,18 +4,20 @@ FROM python:3.9-slim-buster
 RUN pip install --upgrade pip
 
 # get curl for healthchecks
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update && apt-get install -y curl fping
 
 # permissions and nonroot user for tightened security
-RUN addgroup --system nonroot && adduser --system --group nonroot
-RUN mkdir /home/app/ && chown -R nonroot:nonroot /home/app
+# RUN addgroup --system nonroot && adduser --system --group nonroot
+RUN mkdir /home/app/ 
+# && chown -R nonroot:nonroot /home/app
 RUN mkdir -p /var/log/flask-app && touch /var/log/flask-app/flask-app.err.log && touch /var/log/flask-app/flask-app.out.log
-RUN chown -R nonroot:nonroot /var/log/flask-app
+# RUN chown -R nonroot:nonroot /var/log/flask-app
 WORKDIR /home/app
-USER nonroot
+# USER nonroot
 
 # copy all the files to the container
-COPY --chown=nonroot:nonroot . .
+# COPY --chown=nonroot:nonroot . .
+COPY . .
 
 # venv
 ENV VIRTUAL_ENV=/home/app/venv
