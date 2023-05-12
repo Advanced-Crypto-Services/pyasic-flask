@@ -82,7 +82,7 @@ async def scan_and_get_data(ip, mask):
 
 app = Flask(__name__)
 CORS(app)
-cors = CORS(app, resources={r'/miner': {'origins': '*'}, r'/scan': {'origins': '*'}, r'/kernel-logs': {'origins': '*'}, r'/flask-health-check': {'origins': '*'}})
+CORS(app)
 
 @app.route('/miner', methods=['GET'])
 async def miner():
