@@ -8,6 +8,14 @@ from pyasic import get_miner
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# XX: some weird situation where request.host_url
+# shows up with http when tunneling from HTTP to HTTPS
+def enforce_https_for_ngrok(url: str):
+  if "ngrok" in url:
+    if "http://" in url:
+      return url.replace("http://", "https://")
+  return url
+
 def ping(host):
     try:
         return subprocess.check_output(['fping', '-a', '-q', '-g', host])
@@ -82,7 +90,6 @@ async def scan_and_get_data(ip, mask):
 
 app = Flask(__name__)
 CORS(app)
-CORS(app)
 
 @app.route('/miner', methods=['GET'])
 async def miner():
@@ -108,11 +115,13 @@ async def scan():
 
     results = {}
 
+    clean_host_url = enforce_https_for_ngrok(request.host_url)
+
     for miner in miners:
-         results[miner['ip']] = { 'miner_data': miner, 'kernel_log': f'{request.host_url}kernel-logs?ip={miner["ip"]}' }
+         results[miner['ip']] = { 'miner_data': miner, 'kernel_log': f'{clean_host_url}kernel-logs?ip={miner["ip"]}' }
 
     for potential_miner in potential_miners:
-         results[potential_miner] = { 'kernel_log': f'{request.host_url}kernel-logs?ip={potential_miner}' }
+         results[potential_miner] = { 'kernel_log': f'{clean_host_url}kernel-logs?ip={potential_miner}' }
 
     response = app.response_class(
         response=json.dumps(results),
