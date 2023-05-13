@@ -29,8 +29,7 @@ def ping(host):
         raise RuntimeError('command "{}" return with error (code {}): {}'.format(e.cmd, e.returncode, e.output))
 
 def get_pingable_hosts(host):
-     # return ping(host).split(' ')
-     return ['10.33.13.90', '10.33.13.100', '10.33.13.114', '10.33.13.115', '10.33.13.116', '10.33.13.119', '10.33.13.120', '10.33.13.122', '10.33.13.123', '10.33.13.125', '10.33.13.126', '10.33.13.127', '10.33.13.128', '10.33.13.132', '10.33.13.134', '10.33.13.135', '10.33.13.136']
+    return ping(host).splitlines()
 
 def get_kernel_log_url(ip, with_auth=False):
      if not with_auth: 
