@@ -18,7 +18,10 @@ def enforce_https_for_ngrok(url: str):
 
 def ping(host):
     try:
-        return subprocess.check_output(['fping', '-a', '-q', '-g', host])
+        if isinstance(host, list):
+            return subprocess.check_output(['fping', '-a', '-q', '-g'] + host)
+        else:
+            return subprocess.check_output(['fping', '-a', '-q', '-g', host])
     except subprocess.CalledProcessError as e:
         # based on https://fping.org/fping.1.html
         # Exit status is 0 if all the hosts are reachable, 
@@ -37,12 +40,14 @@ def get_kernel_log_url(ip, with_auth=False):
      else:
           return f'http://root:root@{ip}/cgi-bin/get_kernel_log.cgi'
 
-def get_kernel_logs(ip):
-     return requests.get(get_kernel_log_url(ip), auth=HTTPDigestAuth('root', 'root'))
+def get_kernel_logs(ip, download=True):
+     url = get_kernel_log_url(ip)
+     auth = HTTPDigestAuth('root', 'root')
+     return requests.get(url, auth=auth) if download else requests.head(url, auth=auth)
 
 def has_kernel_logs(ip):
     try:
-        resp = get_kernel_logs(ip)
+        resp = get_kernel_logs(ip, False)
         return resp.status_code == 200
     except:
          return False
@@ -61,11 +66,11 @@ async def get_miner_data(miner_ip: str):
     return await miner.get_data()
 
 # define asynchronous function to scan for miners
-async def scan_and_get_data(ip, mask):
+async def scan_and_get_data(ip, mask=None):
     # Define network range to be used for scanning
     # This can take a list of IPs, a constructor string, or an IP and subnet mask
     # The standard mask is /24 (x.x.x.0-255), and you can pass any IP address in the subnet
-    net = MinerNetwork(ip, mask=mask)
+    net = MinerNetwork(ip, mask=mask) if  not isinstance(ip, list) else MinerNetwork(ip)
 
     hosts = list(map(lambda ip: str(ip), list(net.hosts())) )
 
@@ -100,14 +105,12 @@ async def miner():
     )
     return response
 
-
 @app.route('/scan', methods=['GET'])
 async def scan():
-    ip = request.args.get('ip')
-    mask = request.args.get('mask', default=24, type=int)
+    ips = request.args.get('ips').split(",")
 
-    miners = await scan_and_get_data(ip, mask)
-    pingable_ips = get_pingable_hosts(f'{ip}/{mask}')
+    pingable_ips = get_pingable_hosts(ips)
+    miners = await scan_and_get_data(ips)
 
     # identify IPs that are pingable but are NOT identified as working miners
     potential_miners = list(filter(lambda ip: has_kernel_logs(ip), list(set(pingable_ips) - set(map(lambda m: m['ip'], miners)))))
