@@ -13,3 +13,17 @@ services:
       timeout: 10s
       retries: 3
     command: gunicorn -w 3 -t 60 -b 0.0.0.0:8000 app:app
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    network_mode: "host"
+    depends_on:
+      web:
+        condition: service_healthy
+    command:
+      - "http"
+      - "8000"
+      - "--config"
+      - "/etc/ngrok.yml"
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml

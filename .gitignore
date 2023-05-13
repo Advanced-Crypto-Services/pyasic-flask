@@ -6,3 +6,4 @@ pyvenv.cfg
 .env/
 .idea/
 .DS_Store
+ngrok.yml
