@@ -141,7 +141,7 @@ async def run_ping():
     results = {}
 
     for ip in pingable_ips:
-         results[ip] = ""
+         results[str(ip)] = ""
 
     response = app.response_class(
         response=json.dumps(results),
