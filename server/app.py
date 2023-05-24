@@ -132,6 +132,24 @@ async def scan():
     )
     return response
 
+@app.route('/ping', methods=['GET'])
+async def run_ping():
+    ips = request.args.get('ips').split(",")
+
+    pingable_ips = get_pingable_hosts(ips)
+
+    results = {}
+
+    for ip in pingable_ips:
+         results[ip] = ""
+
+    response = app.response_class(
+        response=json.dumps(results),
+        status=200,
+        mimetype='application/json'
+    )
+    return response
+
 @app.route('/info')
 def info():
 	return jsonify({
