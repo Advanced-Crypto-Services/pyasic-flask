@@ -19,9 +19,9 @@ def enforce_https_for_ngrok(url: str):
 def ping(host):
     try:
         if isinstance(host, list):
-            return subprocess.check_output(['fping', '-a', '-q', '-g'] + host)
+            return subprocess.check_output(['fping', '-a', '-q'] + host)
         else:
-            return subprocess.check_output(['fping', '-a', '-q', '-g', host])
+            return subprocess.check_output(['fping', '-a', '-q', host])
     except subprocess.CalledProcessError as e:
         # based on https://fping.org/fping.1.html
         # Exit status is 0 if all the hosts are reachable, 
