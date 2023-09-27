@@ -4,7 +4,7 @@ import json
 import requests
 from requests.auth import HTTPDigestAuth
 from pyasic.network import MinerNetwork
-from pyasic import get_miner
+from pyasic import get_miner, UnknownAPI
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
@@ -55,6 +55,13 @@ def has_kernel_logs(ip):
 def download_kernel_logs(ip):
      return get_kernel_logs(ip).text
      
+async def get_miner_summary(miner):
+    supported_commands = miner.api.get_commands()
+
+    if "summary" in supported_commands:
+       return await miner.api.send_command("summary")
+
+    return None
 
 # define asynchronous function to get miner and data
 async def get_miner_data(miner_ip: str):
@@ -84,13 +91,56 @@ async def scan_and_get_data(ip, mask=None):
     # Gather all tasks asynchronously and run them
     results = await asyncio.gather(*tasks)
 
+    summary_tasks = [get_miner_summary(miner) for miner in miners]
+    summary_results = await asyncio.gather(*summary_tasks)
+
     # return a list of dicts, without datetime (not json serializable)
     def to_clean_dict(l):
         r = l.asdict()
         r.pop('datetime')
         return r
 
-    return list(map(to_clean_dict, results))
+    result_output = list(map(to_clean_dict, results))
+
+    for i, _ in enumerate(result_output):
+        result_output[i]["summary"] = summary_results[i]
+
+    return result_output
+
+async def configure_miner_pool(miner_ip, group_name, url, username, password):
+    miner = await get_miner(miner_ip)
+
+    if isinstance(miner.api, UnknownAPI):
+        return
+
+    config = await miner.get_config()
+    config_dict = config.as_dict()
+    config_dict["pool_groups"] = [
+        {
+            'quota': 1,
+            'group_name': group_name,
+            'pools': [
+                {
+                    'url': url,
+                    'username': username,
+                    'password': password
+                },
+                {
+                    'url': '',
+                    'username': '',
+                    'password': ''
+                },
+                {
+                    'url': '',
+                    'username': '',
+                    'password': ''
+                }
+            ]
+        }
+    ]
+    config.from_dict(config_dict)
+    await miner.send_config(config)
+
 
 app = Flask(__name__)
 CORS(app)
@@ -166,3 +216,9 @@ def kernel_logs():
 @app.route('/flask-health-check')
 def flask_health_check():
 	return 'success'
+
+@app.route('/set-pool-config', methods=['POST'])
+async def set_pool_config():
+    content = request.json
+    await configure_miner_pool(content['miner_ip'], content['group_name'], content['url'], content['username'], content['password'])
+    return jsonify({ 'result': 'ok' })
