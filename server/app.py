@@ -110,7 +110,7 @@ async def scan_and_get_data(ip, mask=None):
 async def configure_miner_pool(miner_ip, group_name, url, username, password):
     miner = await get_miner(miner_ip)
 
-    if isinstance(miner.api, UnknownAPI):
+    if miner is None or  isinstance(miner.api, UnknownAPI):
         return
 
     config = await miner.get_config()
