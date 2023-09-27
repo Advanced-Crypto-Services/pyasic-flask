@@ -108,10 +108,13 @@ async def scan_and_get_data(ip, mask=None):
     return result_output
 
 async def configure_miner_pool(miner_ip, group_name, url, username, password):
-    miner = await get_miner(miner_ip)
+    net = MinerNetwork([miner_ip])
+    miners: list = await net.scan_network_for_miners()
 
-    if miner is None or  isinstance(miner.api, UnknownAPI):
+    if len(miners) == 0:
         return
+
+    miner = miners[0]
 
     config = await miner.get_config()
     config_dict = config.as_dict()
