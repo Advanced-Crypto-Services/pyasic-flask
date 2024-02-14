@@ -4,7 +4,7 @@ import json
 import requests
 from requests.auth import HTTPDigestAuth
 from pyasic.network import MinerNetwork
-from pyasic import get_miner, UnknownAPI
+from pyasic import get_miner
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
