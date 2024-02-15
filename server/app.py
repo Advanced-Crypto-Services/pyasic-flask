@@ -4,9 +4,10 @@ import json
 import requests
 from requests.auth import HTTPDigestAuth
 from pyasic.network import MinerNetwork
-from pyasic import get_miner, UnknownAPI
+from pyasic import get_miner
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from helpers.logger import logger
 
 # XX: some weird situation where request.host_url
 # shows up with http when tunneling from HTTP to HTTPS
@@ -77,22 +78,33 @@ async def scan_and_get_data(ip, mask=None):
     # Define network range to be used for scanning
     # This can take a list of IPs, a constructor string, or an IP and subnet mask
     # The standard mask is /24 (x.x.x.0-255), and you can pass any IP address in the subnet
-    net = MinerNetwork(ip, mask=mask) if  not isinstance(ip, list) else MinerNetwork(ip)
+    net = MinerNetwork(ip, mask=mask) if not isinstance(ip, list) else MinerNetwork(ip)
 
-    hosts = list(map(lambda ip: str(ip), list(net.hosts())) )
+    logger.info(f"running network scan for {ip}")
 
     # Scan the network for miners
     # This function returns a list of miners of the correct type as a class
     miners: list = await net.scan_network_for_miners()
 
+    logger.info(f"got miners: {miners}")
+
     # We can now get data from any of these miners
     # To do them all we have to create a list of tasks and gather them
     tasks = [miner.get_data() for miner in miners]
+
+    logger.info(f"gonna get data for individual miners")
+
     # Gather all tasks asynchronously and run them
     results = await asyncio.gather(*tasks)
 
+    logger.info(f"got results: {results}")
+
+    logger.info(f"going to pull summaries for individual miners")
+
     summary_tasks = [get_miner_summary(miner) for miner in miners]
     summary_results = await asyncio.gather(*summary_tasks)
+
+    logger.info(f"got summary data for miners {summary_results}")
 
     # return a list of dicts, without datetime (not json serializable)
     def to_clean_dict(l):
@@ -101,6 +113,8 @@ async def scan_and_get_data(ip, mask=None):
         return r
 
     result_output = list(map(to_clean_dict, results))
+
+    logger.info(f"merging miner data with miner summary")
 
     for i, _ in enumerate(result_output):
         result_output[i]["summary"] = summary_results[i]
@@ -162,11 +176,22 @@ async def miner():
 async def scan():
     ips = request.args.get('ips').split(",")
 
+    logger.info(f"got scan request for {ips}")
+
     pingable_ips = get_pingable_hosts(ips)
+
+    logger.info(f"identified pingable IPs: {pingable_ips}")
+    logger.info(f"gonna run scan on IPs: {ips}")
+
     miners = await scan_and_get_data(ips)
+
+    logger.info(f"got {len(miners)} via scan")
+    logger.info(f"going to look at potential miners")
 
     # identify IPs that are pingable but are NOT identified as working miners
     potential_miners = list(filter(lambda ip: has_kernel_logs(ip), list(set(pingable_ips) - set(map(lambda m: m['ip'], miners)))))
+
+    logger.info(f"identified potential miners {potential_miners}")
 
     results = {}
 
@@ -178,12 +203,11 @@ async def scan():
     for potential_miner in potential_miners:
          results[potential_miner] = { 'kernel_log': f'{clean_host_url}kernel-logs?ip={potential_miner}' }
 
-    response = app.response_class(
+    return app.response_class(
         response=json.dumps(results),
         status=200,
         mimetype='application/json'
     )
-    return response
 
 @app.route('/ping', methods=['GET'])
 async def run_ping():
@@ -205,23 +229,26 @@ async def run_ping():
 
 @app.route('/info')
 def info():
-	return jsonify({
-		'connecting_ip': request.headers['X-Real-IP'],
-		'proxy_ip': request.headers['X-Forwarded-For'],
-		'host': request.headers['Host'],
-		'user-agent': request.headers['User-Agent']
-	})
+    return jsonify({
+        'connecting_ip': request.headers['X-Real-IP'],
+        'proxy_ip': request.headers['X-Forwarded-For'],
+        'host': request.headers['Host'],
+        'user-agent': request.headers['User-Agent']
+    })
 
 @app.route('/kernel-logs', methods=['GET'])
 def kernel_logs():
-	return download_kernel_logs(request.args.get('ip'))
+    ip = request.args.get('ip')
+    logger.info(f"will try downloading kernel logs for {ip}")
+    return download_kernel_logs(ip)
 
 @app.route('/flask-health-check')
 def flask_health_check():
-	return 'success'
+    return 'success'
 
 @app.route('/set-pool-config', methods=['POST'])
 async def set_pool_config():
     content = request.json
+    logger.info(f"setting pool config {content}")
     await configure_miner_pool(content['miner_ip'], content['group_name'], content['url'], content['username'], content['password'])
     return jsonify({ 'result': 'ok' })
