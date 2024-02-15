@@ -1,6 +1,8 @@
 services:
   web:
     build: server
+    environment:
+      - LOGLEVEL=INFO
     ports:
       - "8000:8000"
     healthcheck:
